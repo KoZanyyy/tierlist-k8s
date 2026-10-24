@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tier list</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1 id="title">Tier list</h1>
+    <p class="note">Tout le monde vote, le classement est la moyenne des votes.</p>
+
+    <div class="board">
+      <div class="row"><div class="label" data-tier="S">S</div><div class="cells" id="tier-S"></div></div>
+      <div class="row"><div class="label" data-tier="A">A</div><div class="cells" id="tier-A"></div></div>
+      <div class="row"><div class="label" data-tier="B">B</div><div class="cells" id="tier-B"></div></div>
+      <div class="row"><div class="label" data-tier="C">C</div><div class="cells" id="tier-C"></div></div>
+      <div class="row"><div class="label" data-tier="D">D</div><div class="cells" id="tier-D"></div></div>
+    </div>
+    <div id="unranked-box" hidden>
+      <h2>Pas encore de vote</h2>
+      <div class="cells" id="unranked"></div>
+    </div>
+
+    <h2>Ton vote</h2>
+    <form id="add-form">
+      <input id="name" placeholder="Ajouter un élément" maxlength="40" required autocomplete="off">
+      <button>Ajouter</button>
+    </form>
+    <p id="error" class="error" hidden></p>
+    <ul id="votes" class="votes"></ul>
+
+    <footer class="note">Page servie par le pod <code id="pod">?</code></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

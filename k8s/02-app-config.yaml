@@ -1,0 +1,10 @@
+# Thème de la tier list. Les éléments de départ ne sont ajoutés que si la base est vide.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: tierlist
+data:
+  TITLE: "Meilleurs plats savoyards"
+  SEED_ITEMS: "Raclette,Tartiflette,Fondue,Croziflette,Diots,Reblochon"
+  MONGO_DB: "tierlist"

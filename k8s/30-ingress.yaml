@@ -1,0 +1,19 @@
+# Nécessite un Ingress Controller (minikube : minikube addons enable ingress)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tierlist
+  namespace: tierlist
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tierlist.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app
+                port:
+                  number: 80

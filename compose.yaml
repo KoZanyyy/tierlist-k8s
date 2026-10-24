@@ -1,0 +1,31 @@
+# Lancement local : docker compose up -d --build, puis http://localhost:8080
+services:
+  mongo:
+    image: "docker.io/library/mongo:7"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"
+      MONGO_INITDB_ROOT_PASSWORD: "admin"
+    volumes:
+      - "mongo_data:/data/db"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  app:
+    image: "tierlist:1.0"
+    build: ./app
+    environment:
+      MONGO_URL: "mongodb://admin:admin@mongo:27017/?authSource=admin"
+      TITLE: "Meilleurs plats savoyards"
+      SEED_ITEMS: "Raclette,Tartiflette,Fondue,Croziflette,Diots,Reblochon"
+    ports:
+      - "8080:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
