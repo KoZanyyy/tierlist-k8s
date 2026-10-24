@@ -1,11 +1,10 @@
 # Tier list collaborative
 
-TP « Conteneurisation et orchestration » : une application web conteneurisée et ses manifestes de déploiement Kubernetes.
+TP Docker / Kubernetes : une application web conteneurisée et ses manifestes de déploiement Kubernetes.
 
-## Binôme
+## Auteurs
 
-- NOM Prénom
-- NOM Prénom
+- CAGNON Lény
 
 ## L'application
 
@@ -145,11 +144,12 @@ Ensuite, remplacer `image: tierlist:1.0` par `<registry>/tierlist:1.0` dans `k8s
 
 ```bash
 # Répartition de charge : chaque réponse indique le pod qui l'a servie (en-tête X-Served-By).
-# URL=$(minikube service app -n tierlist --url)   (sous macOS, garder cette commande ouverte
-#                                                  dans un autre terminal et copier l'URL affichée)
+# Récupérer l'URL du service. Sous macOS, la commande reste ouverte : la lancer dans
+# un autre terminal et copier l'URL affichée dans URL=...
+URL=$(minikube service app -n tierlist --url)
 for i in 1 2 3 4 5 6; do curl -s -D - -o /dev/null $URL/api/config | grep X-Served-By; done
-# (Un navigateur réutilise sa connexion et un port-forward vise un seul pod :
-#  dans ces deux cas, c'est presque toujours le même pod qui répond.)
+# Un navigateur réutilise sa connexion, et un port-forward vise un seul pod :
+# dans ces deux cas, c'est presque toujours le même pod qui répond.
 
 # Tolérance aux pannes : les pods app sont recréés automatiquement
 kubectl -n tierlist delete pod -l app=tierlist
@@ -167,4 +167,4 @@ kubectl -n tierlist scale deployment/app --replicas=4
 kubectl delete -f k8s/
 ```
 
-Supprimer le namespace supprime aussi le volume de MongoDB, donc les données.
+Supprimer le namespace supprime aussi le volume de MongoDB, donc les données, ainsi que la Gateway et l'HTTPRoute si elles ont été créées. La GatewayClass `eg` n'appartient à aucun namespace : la supprimer avec `kubectl delete -f k8s/gateway/envoy-gatewayclass.yaml`.
