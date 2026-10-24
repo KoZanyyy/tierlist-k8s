@@ -54,10 +54,23 @@ spec:
             limits:
               cpu: "1"
               memory: "1Gi"
-          readinessProbe:
+          # Laisse jusqu'à 2 min à MongoDB pour démarrer avant de lancer les autres probes
+          startupProbe:
             tcpSocket:
               port: 27017
+            periodSeconds: 5
+            failureThreshold: 24
+          # Redémarre le conteneur si MongoDB ne répond plus
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            periodSeconds: 20
+          # Ne reçoit du trafic que si MongoDB accepte les commandes
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
             periodSeconds: 10
+            timeoutSeconds: 5
   # Volume persistant propre au pod (PVC data-mongo-0), gardé quand le pod est recréé
   volumeClaimTemplates:
     - metadata:

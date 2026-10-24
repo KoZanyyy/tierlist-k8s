@@ -1,0 +1,9 @@
+# GatewayClass pour Envoy Gateway (minikube uniquement).
+# Sur un cluster déjà équipé d'un contrôleur, ne pas appliquer ce fichier :
+# utiliser la GatewayClass existante (kubectl get gatewayclass).
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller

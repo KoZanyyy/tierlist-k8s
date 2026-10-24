@@ -61,17 +61,20 @@ Puis ouvrir <http://localhost:8080>. Arrêt : `docker compose down` (ajouter `-v
 | `00-namespace.yaml`     | Namespace `tierlist` |
 | `01-mongo-secret.yaml`  | Secret `mongo` : identifiants MongoDB, utilisés par Mongo et par l'application |
 | `02-app-config.yaml`    | ConfigMap `app-config` : titre, éléments de départ, nom de la base |
-| `10-mongo.yaml`         | Service headless `mongo` + StatefulSet `mongo` (1 replica, volume persistant de 1 Gi via `volumeClaimTemplates`) |
+| `10-mongo.yaml`         | Service headless `mongo` + StatefulSet `mongo` (1 replica, volume persistant de 1 Gi via `volumeClaimTemplates`, probes startup/liveness/readiness) |
 | `20-app.yaml`           | Service `app` de type NodePort (port 30080) + Deployment `app` (2 replicas, probes, requests/limits) |
 | `30-ingress.yaml`       | Ingress : `tierlist.local` → service `app` |
+| `gateway/gateway.yaml`  | Facultatif : Gateway + HTTPRoute, alternative à l'Ingress avec la Gateway API |
+| `gateway/envoy-gatewayclass.yaml` | Facultatif : GatewayClass pour Envoy Gateway (test sur minikube) |
 
-Les fichiers sont numérotés pour que `kubectl apply -f k8s/` crée d'abord le namespace.
+Les fichiers sont numérotés pour que `kubectl apply -f k8s/` crée d'abord le namespace. Cette commande ne descend pas dans `k8s/gateway/` : la Gateway API ne s'applique qu'à la demande (voir plus bas).
 
 Quelques choix :
 
 - **MongoDB en StatefulSet** : le pod garde le même nom (`mongo-0`) et retrouve le même volume (PVC `data-mongo-0`) quand il est recréé, donc les votes ne sont pas perdus.
 - **Configuration séparée de l'image** : le thème est dans un ConfigMap et les identifiants dans un Secret. L'URL de connexion est construite dans le Deployment à partir du Secret (`$(MONGO_USER)`, `$(MONGO_PASSWORD)`).
-- **Deux probes différentes** : la readiness (`/healthz`) vérifie MongoDB, donc un pod n'est mis dans le Service que si la base répond. La liveness (`/livez`) ne dépend pas de la base, pour qu'une panne de MongoDB ne fasse pas redémarrer l'application en boucle.
+- **Probes de l'application** : la readiness (`/healthz`) vérifie MongoDB, donc un pod n'est mis dans le Service que si la base répond. La liveness (`/livez`) ne dépend pas de la base, pour qu'une panne de MongoDB ne fasse pas redémarrer l'application en boucle.
+- **Probes de MongoDB** : la startup probe laisse jusqu'à 2 minutes au premier démarrage. Ensuite, la liveness (port TCP) redémarre le conteneur s'il ne répond plus, et la readiness (`mongosh ping`) vérifie que la base accepte les commandes.
 
 ### Avec minikube
 
@@ -99,6 +102,33 @@ Pour accéder à l'application, au choix :
 - avec l'Ingress : `minikube tunnel` dans un autre terminal, ajouter `127.0.0.1 tierlist.local` à `/etc/hosts`, puis ouvrir <http://tierlist.local>.
 
 Pour changer de thème, modifier `k8s/02-app-config.yaml` puis lancer `kubectl apply -f k8s/` et `kubectl -n tierlist rollout restart deployment/app`. Les éléments de départ ne sont ajoutés que si la base est vide.
+
+### Variante : Gateway API au lieu de l'Ingress
+
+`k8s/gateway/gateway.yaml` expose l'application avec une **Gateway** (listener HTTP sur le port 80, hôte `tierlist.local`, seules les routes du namespace `tierlist` acceptées) et une **HTTPRoute** (préfixe `/` → service `app`). Il faut un contrôleur Gateway API sur le cluster.
+
+Sur minikube, avec Envoy Gateway :
+
+```bash
+# Contrôleur + CRDs de la Gateway API (nécessite helm)
+helm install eg oci://docker.io/envoyproxy/gateway-helm --version v1.9.2 \
+     -n envoy-gateway-system --create-namespace
+kubectl -n envoy-gateway-system wait --for=condition=available deploy/envoy-gateway --timeout=300s
+
+# GatewayClass "eg", puis Gateway + HTTPRoute
+kubectl apply -f k8s/gateway/
+kubectl -n tierlist get gateway,httproute
+```
+
+Envoy crée un Service de type LoadBalancer pour la Gateway. Sur minikube, il reste en `<pending>`, et la Gateway en `Programmed=False`, tant que `minikube tunnel` n'est pas lancé. Pour tester sans tunnel :
+
+```bash
+SVC=$(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gateway-name=tierlist -o name)
+kubectl -n envoy-gateway-system port-forward $SVC 8090:80
+curl -H 'Host: tierlist.local' http://localhost:8090/api/config
+```
+
+Sur un cluster qui a déjà un contrôleur, ne pas appliquer `envoy-gatewayclass.yaml`. Il suffit de mettre la bonne classe dans `gatewayClassName` (`kubectl get gatewayclass`) puis d'appliquer `gateway.yaml`.
 
 ### Sur un autre cluster
 
